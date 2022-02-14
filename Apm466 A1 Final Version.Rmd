@@ -1,0 +1,361 @@
+---
+title: "MAT1856/APM466 Assignment 1"
+author: "Your Name, Student #: 1005132358"
+date: "13/02/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Fundamental Questions - 25 points
+
+#### 1.
+(a) By issuing bonds, governments are able to raise money to finance projects without reducing expenses on other projects, whereas printing more money leads to inflation or even hyperinflation, raising the price level significantly.
+
+(b) If the Federal Reserve plans to raise the federal funds rate, then the inflationary pressure will be reduced, and so that the yield curve might be flatten in the long-term.
+
+(c) Since the beginning of the COVID-19 pandemic, the US Fed has employed quantitative easing by increasing the purchase of Treasury securities and mortgage-backed securities (MBS) in order to increase the supply of domestic money and decrease the interest rates.
+
+#### 2.
+The selected 11 bonds are: CAN 0.50 Mar 22, CAN 0.25 Aug 22, CAN 1.75 Mar 23, CAN 0.25 Aug 23, CAN 2.25 Mar 24, CAN 1.50 Sep 24, CAN 1.25 Mar 25, CAN 0.50 Sep 25, CAN 0.25 Mar 26, CAN 1.00 Sep 26, CAN 1.25 Mar 27. The maturity dates of 11 selected bonds are from March 1, 2022 to March 1 to 2027, a five year period from now. Since they have semi-annual coupon payments, I choose those bonds with maturity dates close to 0.5, 1, 1.5, …, 4.5, 5 years from now, which allows me to calculate the yield curves using the bootstrapping technique. Also, most of those bonds have a duration of 5 years and coupon rates ranging from 0.25% to 2.25%.
+
+#### 3.
+The Principal Component Analysis (PCA) is a technique to reduce the dimensionality that aims to find a low-dimensional representation of the data by projecting the data onto a subspace which maximizes the projected variance, or equivalently, minimizes the reconstruction error.  The eigenvectors and eigenvalues always come in pairs, in which the eigenvectors determine the direction and the eigenvalues determine the magnitude that tells us how much variance (spread out) of data in this direction. Thus, the optimal subspace is given by the top eigenvectors with large eigenvalues of the empirical covariance matrix.
+
+## Empirical Questions - 75 points
+
+#### 4.
+(a) Since the maturity date of 11 bonds are not exactly 6 months apart and 0.5, 1, 1.5,…,4.5, 5 years from now, a linear interpolation technique can be applied in this case. Then the bonds’ yield in 0.5 year, 1 year, 1.5 years… can be calculated using the function approx() in R, which can help us do the linear interpolation.
+
+```{r,warning=FALSE,echo=FALSE,include=FALSE}
+library(readr)
+#Import the clean price of 10 bonds
+APM466_10_bonds_Clean <- read_csv("/Users/xigua/Desktop/APM466 A1/APM466 10 bonds - Copy of Clean.csv")
+Clean=as.data.frame(APM466_10_bonds_Clean)
+#Import the dirty price of 10 bonds
+APM466_10_bonds_Dirty <- read_csv("/Users/xigua/Desktop/APM466 A1/APM466 10 bonds - Copy of Dirty.csv")
+Dirty=as.data.frame(APM466_10_bonds_Dirty)
+```
+
+```{r,echo=FALSE}
+library(jrvFinance)
+Settle=c("2022-01-10","2022-01-11","2022-01-12","2022-01-13","2022-01-14","2022-01-17","2022-01-18","2022-01-19","2022-01-20","2022-01-21")
+
+##### Calculate the Time to Maturity in Years for each bond at each day.
+Time_to_mature_Y= matrix('numeric',nrow=10,ncol = 11)
+for (i in c(1:10)){
+  for (j in c(1:11)){
+    Time_to_mature_Y[i,j]=yearFraction(Settle[i],Dirty$Maturity_Date[j],freq = 2,convention = c("30/360", "ACT/ACT", "ACT/360", "30/360E"))
+  }
+}
+
+##### Calculate and list all cash flows for each bond.
+
+cf1=c(100.25)
+cf2=c(0.125,100.125)
+cf3=c(0.875,0.875,100.875)
+cf4=c(0.125,0.125,0.125,100.125)
+cf5=c(1.125,1.125,1.125,1.125,101.125)
+cf6=c(0.75,0.75,0.75,0.75,0.75,100.75)
+cf7=c(0.625,0.625,0.625,0.625,0.625,0.625,100.625)
+cf8=c(0.25,0.25,0.25,0.25,0.25,0.25,0.25,100.25)
+cf9=c(0.125,0.125,0.125,0.125,0.125,0.125,0.125,0.125,100.125)
+cf10=c(0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,100.5)
+cf11=c(0.625,0.625,0.625,0.625,0.625,0.625,0.625,0.625,0.625,0.625,100.625)
+
+
+
+##### Calculate the YTM Matrix
+# first construct an empty matrix 
+ytm_matrix= matrix(nrow = 11,ncol = 10) 
+
+# using the boostrapping technique to calculate the ytm of each bond and then repeat for 10 days.
+for(i in c(1:10)){
+  
+  t1=as.numeric(Time_to_mature_Y[i,1])
+  x1 = function(x) Dirty[1,i+8]-cf1*(1+x/2)^(-t1*2)
+  ytm_1 = uniroot(x1,c(0,1))$root
+  
+  t2=as.numeric(Time_to_mature_Y[i,2])
+  x2 = function(x) Dirty[2,i+8]-cf2[1]*(1+x/2)^(-(t2-0.5*1)*2)-cf2[2]*(1+x/2)^(-t2*2)
+  ytm_2 = uniroot(x2,c(0,1))$root
+  
+  t3=as.numeric(Time_to_mature_Y[i,3])
+  x3 = function(x) Dirty[3,i+8]-cf3[1]*(1+x/2)^(-(t3-0.5*2)*2)-cf3[2]*(1+x/2)^(-(t3-0.5*1)*2)-cf3[3]*(1+x/2)^(-t3*2)
+  ytm_3 = uniroot(x3,c(0,1))$root
+  
+  t4=as.numeric(Time_to_mature_Y[i,4])
+  x4 = function(x) Dirty[4,i+8]-cf4[1]*(1+x/2)^(-(t4-0.5*3)*2)-cf4[2]*(1+x/2)^(-(t4-0.5*2)*2)-cf4[3]*(1+x/2)^(-(t4-0.5*1)*2)-cf4[4]*(1+x/2)^(-t4*2)
+  ytm_4 = uniroot(x4,c(0,1))$root
+  
+  t5=as.numeric(Time_to_mature_Y[i,5])
+  x5 = function(x) Dirty[5,i+8]-cf5[1]*(1+x/2)^(-(t5-0.5*4)*2)-cf5[2]*(1+x/2)^(-(t5-0.5*3)*2)-cf5[3]*(1+x/2)^(-(t5-0.5*2)*2)-cf5[4]*(1+x/2)^(-(t5-0.5*1)*2)-cf5[5]*(1+x/2)^(-t5*2)
+  ytm_5 = uniroot(x5,c(0,1))$root
+  
+  t6=as.numeric(Time_to_mature_Y[i,6])
+  x6 = function(x) Dirty[6,i+8]-cf6[1]*(1+x/2)^(-(t6-0.5*5)*2)-cf6[2]*(1+x/2)^(-(t6-0.5*4)*2)-cf6[3]*(1+x/2)^(-(t6-0.5*3)*2)-cf6[4]*(1+x/2)^(-(t6-0.5*2)*2)-cf6[5]*(1+x/2)^(-(t6-0.5*1)*2)-cf6[6]*(1+x/2)^(-t6*2)
+  ytm_6 = uniroot(x6,c(0,1))$root
+  
+  t7=as.numeric(Time_to_mature_Y[i,7])
+  x7 = function(x) Dirty[7,i+8]-cf7[1]*(1+x/2)^(-(t7-0.5*6)*2)-cf7[2]*(1+x/2)^(-(t7-0.5*5)*2)-cf7[3]*(1+x/2)^(-(t7-0.5*4)*2)-cf7[4]*(1+x/2)^(-(t7-0.5*3)*2)-cf7[5]*(1+x/2)^(-(t7-0.5*2)*2)-cf7[6]*(1+x/2)^(-(t7-0.5*1)*2)-cf7[7]*(1+x/2)^(-t7*2)
+  ytm_7 = uniroot(x7,c(0,1))$root
+  
+  t8=as.numeric(Time_to_mature_Y[i,8])
+  x8 = function(x) Dirty[8,i+8]-cf8[1]*(1+x/2)^(-(t8-0.5*7)*2)-cf8[2]*(1+x/2)^(-(t8-0.5*6)*2)-cf8[3]*(1+x/2)^(-(t8-0.5*5)*2)-cf8[4]*(1+x/2)^(-(t8-0.5*4)*2)-cf8[5]*(1+x/2)^(-(t8-0.5*3)*2)-cf8[6]*(1+x/2)^(-(t8-0.5*2)*2)-cf8[7]*(1+x/2)^(-(t8-0.5*1)*2)-cf8[8]*(1+x/2)^(-t8*2)
+  ytm_8 = uniroot(x8,c(0,1))$root
+  
+  t9=as.numeric(Time_to_mature_Y[i,9])
+  x9 = function(x) Dirty[9,i+8]-cf9[1]*(1+x/2)^(-(t9-0.5*8)*2)-cf9[2]*(1+x/2)^(-(t9-0.5*7)*2)-cf9[3]*(1+x/2)^(-(t9-0.5*6)*2)-cf9[4]*(1+x/2)^(-(t9-0.5*5)*2)-cf9[5]*(1+x/2)^(-(t9-0.5*4)*2)-cf9[6]*(1+x/2)^(-(t9-0.5*3)*2)-cf9[7]*(1+x/2)^(-(t9-0.5*2)*2)-cf9[8]*(1+x/2)^(-(t9-0.5*1)*2)-cf9[9]*(1+x/2)^(-t9*2)
+  ytm_9 = uniroot(x9,c(0,1))$root
+  
+  t10=as.numeric(Time_to_mature_Y[i,10])
+  x10 = function(x) Dirty[10,i+8]-cf10[1]*(1+x/2)^(-(t10-0.5*9)*2)-cf10[2]*(1+x/2)^(-(t10-0.5*8)*2)-cf10[3]*(1+x/2)^(-(t10-0.5*7)*2)-cf10[4]*(1+x/2)^(-(t10-0.5*6)*2)-cf10[5]*(1+x/2)^(-(t10-0.5*5)*2)-cf10[6]*(1+x/2)^(-(t10-0.5*4)*2)-cf10[7]*(1+x/2)^(-(t10-0.5*3)*2)-cf10[8]*(1+x/2)^(-(t10-0.5*2)*2)-cf10[9]*(1+x/2)^(-(t10-0.5*1)*2)-cf10[10]*(1+x/2)^(-t10*2)
+  ytm_10 = uniroot(x10,c(0,1))$root
+  
+  
+   t11=as.numeric(Time_to_mature_Y[i,11])
+  x11 = function(x) Dirty[10,i+8]-cf11[1]*(1+x/2)^(-(t11-0.5*10)*2)-cf11[2]*(1+x/2)^(-(t11-0.5*9)*2)-cf11[3]*(1+x/2)^(-(t11-0.5*8)*2)-cf11[4]*(1+x/2)^(-(t11-0.5*7)*2)-cf11[5]*(1+x/2)^(-(t11-0.5*6)*2)-cf11[6]*(1+x/2)^(-(t11-0.5*5)*2)-cf11[7]*(1+x/2)^(-(t11-0.5*4)*2)-cf11[8]*(1+x/2)^(-(t11-0.5*3)*2)-cf11[9]*(1+x/2)^(-(t11-0.5*2)*2)-cf11[10]*(1+x/2)^(-(t11-0.5*1)*2)-cf11[11]*(1+x/2)^(-t11*2)
+  ytm_11 = uniroot(x11,c(0,1))$root
+  
+  ytm_matrix[,i]=cbind(ytm_1,ytm_2,ytm_3,ytm_4,ytm_5,ytm_6,ytm_7,ytm_8,ytm_9,ytm_10,ytm_11)
+  
+}
+
+
+# linear interpolation
+for (i in c(1:10)){
+  ytm_matrix[,i]= approx(Dirty$Time_to_Maturity_in_M,ytm_matrix[,i],xout=c(1,6,12,18,24,30,36,42,48,54,60))$y
+}
+
+
+colnames(ytm_matrix)=Settle
+rownames(ytm_matrix)=c("CAN 0.50 Mar 22", "CAN 0.25 Aug 22","CAN 1.75 Mar 23", "CAN 0.25 Aug 23", "CAN 2.25 Mar 24", "CAN 1.50 Sep 24", "CAN 1.25 Mar 25"," CAN 0.50 Sep 25"," CAN 0.25 Mar 26", "CAN 1.00 Sep 26", "CAN 1.25 Mar 27")
+```
+
+
+```{r,echo=FALSE}
+# output the ytm matrix
+library(kableExtra)
+kable(ytm_matrix, caption = "YTM of 11 Selected Bonds") %>%
+  kable_styling(latex_options = "HOLD_position",font_size = 5)
+```
+
+
+```{r,echo=FALSE,fig.dim=c(5,3.3),fig.align = "center"}
+#plot
+plot(ytm_matrix[,1],type = "l",ylab = "YTM", xlab="Time to Maturity", col="red",xlim=c(1,5),main = "Figure 1: YTM Curves Corresponding to Each Day",cex.main=0.8,cex.lab=0.7,cex.axis=0.7,ylim = c(0,0.016),font.main = 1)
+axis(1, at=seq(1, 5, by=0.5),labels = F)
+lines(ytm_matrix[,2],type="l",col="green")
+lines(ytm_matrix[,3],type="l",col="yellow")
+lines(ytm_matrix[,4],type="l",col="orange")
+lines(ytm_matrix[,5],type="l",col="pink")
+lines(ytm_matrix[,6],type="l",col="blue")
+lines(ytm_matrix[,7],type="l",col="lightblue")
+lines(ytm_matrix[,8],type="l",col="salmon")
+lines(ytm_matrix[,9],type="l",col="purple")
+lines(ytm_matrix[,10],type="l",col="brown")
+legend("bottomright",col=c("red","green","yellow","orange","pink","blue","lightblue","salmon","purple","brown"),legend = c("Jan 10, 2022","Jan 11, 2022","Jan 12, 2022","Jan 13, 2022","Jan 14, 2022","Jan 17, 2022","Jan 18, 2022","Jan 19, 2022","Jan 20, 2022","Jan 21, 2022"),lty=1,cex=0.4)
+
+```
+
+(b)
+
+```{r,echo=FALSE}
+##### Calculate the YTM Matrix
+# first construct an empty matrix 
+spot_rate_matrix = matrix(nrow = 11,ncol = 10)
+
+for(i in c(1:10)){
+  t1=as.numeric(Time_to_mature_Y[i,1])
+  x1 = function(x) Dirty[1,i+8]-cf1[1]*(1+x/2)^(-t1*2)
+  ytm_1 = uniroot(x1,c(0,1))$root
+  
+  t2=as.numeric(Time_to_mature_Y[i,2])
+  x2 = function(x) Dirty[2,i+8]-cf2[1]*(1+ytm_1/2)^(-(t2-0.5*1)*2)-cf2[2]*(1+x/2)^(-t2*2)
+  ytm_2 = uniroot(x2,c(0,1))$root
+  
+  t3=as.numeric(Time_to_mature_Y[i,3])
+  x_3 = function(x) Dirty[3,i+8]-cf3[1]*(1+ytm_1/2)^(-(t3-0.5*2)*2)-cf3[2]*(1+ytm_2/2)^(-(t3-0.5*1)*2)-cf3[3]*(1+x/2)^(-t3*2)
+  ytm_3 = uniroot(x3,c(0,1))$root
+  
+  t4=as.numeric(Time_to_mature_Y[i,4])
+  x4 = function(x) Dirty[4,i+8]-cf4[1]*(1+ytm_1/2)^(-(t4-0.5*3)*2)-cf4[2]*(1+ytm_2/2)^(-(t4-0.5*2)*2)-cf4[3]*(1+ytm_3/2)^(-(t4-0.5*1)*2)-cf4[4]*(1+x/2)^(-t4*2)
+  ytm_4 = uniroot(x4,c(0,1))$root
+  
+  t5=as.numeric(Time_to_mature_Y[i,5])
+  x5 = function(x) Dirty[5,i+8]-cf5[1]*(1+ytm_1/2)^(-(t5-0.5*4)*2)-cf5[2]*(1+ytm_2/2)^(-(t5-0.5*3)*2)-cf5[3]*(1+ytm_3/2)^(-(t5-0.5*2)*2)-cf5[4]*(1+ytm_4/2)^(-(t5-0.5*1)*2)-cf5[5]*(1+x/2)^(-t5*2)
+  ytm_5 = uniroot(x5,c(0,1))$root
+  
+  t6=as.numeric(Time_to_mature_Y[i,6])
+  x6 = function(x) Dirty[6,i+8]-cf6[1]*(1+ytm_1/2)^(-(t6-0.5*5)*2)-cf6[2]*(1+ytm_2/2)^(-(t6-0.5*4)*2)-cf6[3]*(1+ytm_3/2)^(-(t6-0.5*3)*2)-cf6[4]*(1+ytm_4/2)^(-(t6-0.5*2)*2)-cf6[5]*(1+ytm_5/2)^(-(t6-0.5*1)*2)-cf6[6]*(1+x/2)^(-t6*2)
+  ytm_6 = uniroot(x6,c(0,1))$root
+  
+  t7=as.numeric(Time_to_mature_Y[i,7])
+  x7 = function(x) Dirty[7,i+8]-cf7[1]*(1+ytm_1/2)^(-(t7-0.5*6)*2)-cf7[2]*(1+ytm_2/2)^(-(t7-0.5*5)*2)-cf7[3]*(1+ytm_3/2)^(-(t7-0.5*4)*2)-cf7[4]*(1+ytm_4/2)^(-(t7-0.5*3)*2)-cf7[5]*(1+ytm_5/2)^(-(t7-0.5*2)*3)-cf7[6]*(1+ytm_6/2)^(-(t7-0.5*1)*2)-cf7[7]*(1+x/2)^(-t7*2)
+  ytm_7 = uniroot(x7,c(0,1))$root
+  
+  t8=as.numeric(Time_to_mature_Y[i,8])
+  x8 = function(x) Dirty[8,i+8]-cf8[1]*(1+ytm_1/2)^(-(t8-0.5*7)*2)-cf8[2]*(1+ytm_2/2)^(-(t8-0.5*6)*2)-cf8[3]*(1+ytm_3/2)^(-(t8-0.5*5)*2)-cf8[4]*(1+ytm_4/2)^(-(t8-0.5*4)*2)-cf8[5]*(1+ytm_5/2)^(-(t8-0.5*3)*2)-cf8[6]*(1+ytm_6/2)^(-(t8-0.5*2)*2)-cf8[7]*(1+ytm_7/2)^(-(t8-0.5*1)*2)-cf8[8]*(1+x/2)^(-t8*2)
+  ytm_8 = uniroot(x8,c(0,1))$root
+  
+  t9=as.numeric(Time_to_mature_Y[i,9])
+  x9 = function(x) Dirty[9,i+8]-cf9[1]*(1+ytm_1/2)^(-(t9-0.5*8)*2)-cf9[2]*(1+ytm_2/2)^(-(t9-0.5*7)*2)-cf9[3]*(1+ytm_3/2)^(-(t9-0.5*6)*2)-cf9[4]*(1+ytm_4/2)^(-(t9-0.5*5)*2)-cf9[5]*(1+ytm_5/2)^(-(t9-0.5*4)*2)-cf9[6]*(1+ytm_6/2)^(-(t9-0.5*3)*2)-cf9[7]*(1+ytm_7/2)^(-(t9-0.5*2)*2)-cf9[8]*(1+ytm_8/2)^(-(t9-0.5*1)*2)-cf9[9]*(1+x/2)^(-t9*2)
+  ytm_9 = uniroot(x9,c(0,1))$root
+  
+  t10=as.numeric(Time_to_mature_Y[i,10])
+  x10 = function(x) Dirty[10,i+8]-cf10[1]*(1+ytm_1/2)^(-(t10-0.5*9)*2)-cf10[2]*(1+ytm_2/2)^(-(t10-0.5*8)*2)-cf10[3]*(1+ytm_3/2)^(-(t10-0.5*7)*2)-cf10[4]*(1+ytm_4/2)^(-(t10-0.5*6)*2)-cf10[5]*(1+ytm_5/2)^(-(t10-0.5*5)*2)-cf10[6]*(1+ytm_6/2)^(-(t10-0.5*4)*2)-cf10[7]*(1+ytm_7/2)^(-(t10-0.5*3)*2)-cf10[8]*(1+ytm_8/2)^(-(t10-0.5*2)*2)-cf10[9]*(1+ytm_9/2)^(-(t10-0.5*1)*2)-cf10[10]*(1+x/2)^(-t10*2)
+  ytm_10 = uniroot(x10,c(0,1))$root
+  
+  t11=as.numeric(Time_to_mature_Y[i,11])
+  x11 = function(x) Dirty[11,i+8]-cf11[1]*(1+ytm_1/2)^(-(t11-0.5*10)*2)-cf11[2]*(1+ytm_2/2)^(-(t11-0.5*9)*2)-cf11[3]*(1+ytm_3/2)^(-(t11-0.5*8)*2)-cf11[4]*(1+ytm_4/2)^(-(t11-0.5*7)*2)-cf11[5]*(1+ytm_5/2)^(-(t11-0.5*6)*2)-cf11[6]*(1+ytm_6/2)^(-(t11-0.5*5)*2)-cf11[7]*(1+ytm_7/2)^(-(t11-0.5*4)*2)-cf11[8]*(1+ytm_8/2)^(-(t11-0.5*3)*2)-cf11[9]*(1+ytm_9/2)^(-(t11-0.5*2)*2)-cf11[10]*(1+ytm_10/2)^(-(t11-0.5*1)*2)-cf11[11]*(1+x/2)^(-t11*2)
+  ytm_11 = uniroot(x11,c(0,1))$root
+  
+  spot_rate_matrix[,i]=cbind(ytm_1,ytm_2,ytm_3,ytm_4,ytm_5,ytm_6,ytm_7,ytm_8,ytm_9,ytm_10,ytm_11)
+  
+}
+
+# linear interpolation
+for (i in c(1:10)){
+  spot_rate_matrix[,i]= approx(Dirty$Time_to_Maturity_in_M,spot_rate_matrix[,i],xout=c(1,6,12,18,24,30,36,42,48,54,60))$y
+  }
+```
+
+
+```{r,echo=FALSE,fig.dim=c(5,3.3),fig.align = "center"}
+#plot
+plot(spot_rate_matrix[,1],type = "l",ylab = "Spot Rate", xlab="Time to Maturity", col="red",ylim = c(0,0.016),xlim=c(1,5),main = "Figure 2: Spot Curves Corresponding to Each Day",cex.main=0.8,cex.lab=0.7,cex.axis=0.7,font.main = 1)
+axis(1, at=seq(1, 5, by=0.5),labels = F)
+lines(spot_rate_matrix[,2],type="l",col="green")
+lines(spot_rate_matrix[,3],type="l",col="yellow")
+lines(spot_rate_matrix[,4],type="l",col="orange")
+lines(spot_rate_matrix[,5],type="l",col="pink")
+lines(spot_rate_matrix[,6],type="l",col="blue")
+lines(spot_rate_matrix[,7],type="l",col="lightblue")
+lines(spot_rate_matrix[,8],type="l",col="salmon")
+lines(spot_rate_matrix[,9],type="l",col="purple")
+lines(spot_rate_matrix[,10],type="l",col="brown")
+legend("bottomright",col=c("red","green","yellow","orange","pink","blue","lightblue","salmon","purple","brown"),legend = c("Jan 10, 2022","Jan 11, 2022","Jan 12, 2022","Jan 13, 2022","Jan 14, 2022","Jan 17, 2022","Jan 18, 2022","Jan 19, 2022","Jan 20, 2022","Jan 21, 2022"),lty=1,cex=0.4)
+```
+
+First of all, listing the bonds by the maturity dates, so that CAN 0.50 Mar 22 is the first one and CAN 1.25 Mar 27 is the last one. Consider an equation, $P_i=\sum_jcf_i^j(1+\frac{r_j}{n})^{-nt_i^j}$, where $P_i$ is the dirty price of the $i^{th}$ bond, $cf_i^j$ is the $j^{th}$cash flow of the $i^{th}$ bond , $n$ is 2 since the bond compounds 2 times a year, $t_i^j$ is the time between the calulated date and the date of $j^{th}$cash flow of the $i^{th}$ bond, and finally, $r_j$ is the spot rate of $j^{th}$ bond, which is unknown. By solving $r_j$, one can obtain the spot rate of $j^{th}$ bond. Also, using the boostrapping technique, $r_1$ is needed to solve for $r_2$, and $r_1$ and $r_2$ are needed to solve for $r_3$, so on so forth. For example, CAN 0.50 Mar 22, the first bond, which has the maturity less then 6 months, so it can be treated as a zero coupon bond. By finding the root of $P=cf_1^1(1+\frac{r_1}{2})^{-2t_1^1}$, $r_1$ can be calculated. Next, the second bond, CAN 0.25 Aug 22, has a maturity between 6 months and 1 year, we can extend the former equation to $P=cf_2^1(1+\frac{r_1}{2})^{-2t_2^1}-cf_2^2(1+\frac{r_2}{2})^{-2t_2^2}$, and solve for the unknown spot rate, $r_2$. Repeating the same thing for all remaining bonds and all remaining days, we can obtain the spot curve with terms ranging from 1-5 years from my chosen bonds in part 2.
+
+(c)
+
+
+```{r,echo=FALSE,fig.dim=c(5,3.3),fig.align = "center"}
+##### Calculate the Forward Matrix
+# first construct an empty matrix 
+forwards_matrix=matrix('numeric',nrow = 4,ncol = 10)
+
+for (i in c(1:10)) {
+    n1= (1+spot_rate_matrix[3,i]/2)^2
+    n2 = (1+spot_rate_matrix[5,i]/2)^4
+    n3 = (1+spot_rate_matrix[7,i]/2)^6
+    n4 = (1+spot_rate_matrix[9,i]/2)^8
+    n5 = (1+spot_rate_matrix[11,i]/2)^10
+    forwards_matrix[1,i]=2*((n2/n1)^(1/2)-1)
+    forwards_matrix[2,i]=2*((n3/n1)^(1/4)-1)
+    forwards_matrix[3,i]=2*((n4/n1)^(1/6)-1)
+    forwards_matrix[4,i]=2*((n5/n1)^(1/8)-1)
+  }
+
+plot(forwards_matrix[,1],type = "l",ylab = "Forward Rate", xlab="Time", col="red",main = "Figure 3: Forward Curves Corresponding to Each Day",cex.main=0.8,cex.lab=0.7,cex.axis=0.7,ylim = c(0.012,0.02),font.main = 1,)
+lines(forwards_matrix[,2],type="l",col="green")
+lines(forwards_matrix[,3],type="l",col="yellow")
+lines(forwards_matrix[,4],type="l",col="orange")
+lines(forwards_matrix[,5],type="l",col="pink")
+lines(forwards_matrix[,6],type="l",col="blue")
+lines(forwards_matrix[,7],type="l",col="lightblue")
+lines(forwards_matrix[,8],type="l",col="salmon")
+lines(forwards_matrix[,9],type="l",col="purple")
+lines(forwards_matrix[,10],type="l",col="brown")
+
+
+legend("bottomright",col=c("red","green","yellow","orange","pink","blue","lightblue","salmon","purple","brown"),legend = c("Jan 10, 2022","Jan 11, 2022","Jan 12, 2022","Jan 13, 2022","Jan 14, 2022","Jan 17, 2022","Jan 18, 2022","Jan 19, 2022","Jan 20, 2022","Jan 21, 2022"),lty=1,cex=0.35)
+
+```
+
+Spot rate of each bond are required to calculated for the forward rate. The formula I used is $\frac{f_{1,i}}{2}=(\frac{(1+\frac{r_{3+2i}}{2})^{2i}}{(1+\frac{r_3}{2})^{2}})^\frac{1}{2i-2}-1$, where $i=2,3,4,5$. In this formula, ${f_{1,i}}$ is the 1-year forward curve with terms ranging from 2-5 years from my chosen data. Since the time to maturity of bonds 3, 5, 7, 9, and 11 is approximately 1, 2, 3, 4, and 5 years, we use $r_{3+2i}$ as the 2,..,5-year forward rate and ${r_3}$ to be the 1-year spot rate. Also, since the bond compounds 2 times a year, so we divide each rate by 2 and times the power term by 2.
+
+#### 5.
+```{r,echo=FALSE}
+#log-returns of yield
+log_returns_ytm1=log_returns_ytm2=log_returns_ytm3=log_returns_ytm4=log_returns_ytm5=vector('numeric',9)
+for (i in c(1:9)) {
+  log_returns_ytm1[i]=log(ytm_matrix[3,i+1]/ytm_matrix[3,i])
+  log_returns_ytm2[i]=log(ytm_matrix[5,i+1]/ytm_matrix[5,i])
+  log_returns_ytm3[i]=log(ytm_matrix[7,i+1]/ytm_matrix[7,i])
+  log_returns_ytm4[i]=log(ytm_matrix[9,i+1]/ytm_matrix[9,i])
+  log_returns_ytm5[i]=log(ytm_matrix[11,i+1]/ytm_matrix[11,i])
+  log_returns_ytm=cbind(log_returns_ytm1,log_returns_ytm2,log_returns_ytm3,log_returns_ytm4,log_returns_ytm5)
+}
+
+cov_ytm=cov(log_returns_ytm,log_returns_ytm)
+kable(cov_ytm, caption = "Covariance Matrix for the Time Series of Daily Log-Returns of Yield") %>%
+  kable_styling(latex_options = "HOLD_position",font_size = 7)
+
+#log-returns of forward
+log_returns_f12=log_returns_f13=log_returns_f14=log_returns_f15=vector('numeric',9)
+for (i in c(1:9)) {
+  log_returns_f12[i]=log(as.numeric(forwards_matrix[1,i+1])/as.numeric(forwards_matrix[1,i]))
+  log_returns_f13[i]=log(as.numeric(forwards_matrix[2,i+1])/as.numeric(forwards_matrix[2,i]))
+  log_returns_f14[i]=log(as.numeric(forwards_matrix[3,i+1])/as.numeric(forwards_matrix[3,i]))
+  log_returns_f15[i]=log(as.numeric(forwards_matrix[4,i+1])/as.numeric(forwards_matrix[4,i]))
+  log_returns_forward=cbind(log_returns_f12,log_returns_f13,log_returns_f14,log_returns_f15)
+}
+
+cov_forward=cov(log_returns_forward,log_returns_forward)
+kable(cov_forward, caption = "Covariance Matrix for the Time Series of Daily Log-Returns of Forward Rates") %>%
+  kable_styling(latex_options = "HOLD_position",font_size = 7)
+```
+
+
+#### 6.
+```{r,echo=FALSE}
+eigen_ytm=eigen(cov_ytm, symmetric = T)
+eigen_forward=eigen(cov_forward,symmetric = T)
+
+
+eigenvalues_ytm=eigen_ytm$values
+eigenvectors_ytm=eigen_ytm$vectors
+colnames(eigenvectors_ytm)=c("x_1","x_2","x_3","x_4","x_5")
+eigenvalues_forward=eigen_forward$values
+eigenvectors_forward=eigen_forward$vectors
+colnames(eigenvectors_forward)=c("x_1","x_2","x_3","x_4")
+kable(eigenvalues_ytm, caption = "Eigenvalues of Covariance Matrix (YTM)") %>%
+  kable_styling(latex_options = "HOLD_position",font_size = 7)
+
+kable(eigenvectors_ytm, caption = "Eigenvectors of Covariance Matrix (YTM)") %>%
+  kable_styling(latex_options = "HOLD_position",font_size = 7)
+
+kable(eigenvalues_forward, caption = "Eigenvalues of Covariance Matrix (Forward)") %>%
+  kable_styling(latex_options = "HOLD_position",font_size = 7)
+
+kable(eigenvectors_forward, caption = "Eigenvectors of Covariance Matrix (Forward)") %>%
+  kable_styling(latex_options = "HOLD_position",font_size = 7)
+
+```
+
+The first eigenvalue of ytm covariance matrix is 2.973265e-03, corresponding to the eigenvector (-0.60628562,-0.49624489,-0.45479093,-0.41927966,-0.05940138), indicating that the variance of this time series is 2.973265e-03 in the negative direction.
+
+The first eigenvalue of forward covariance matrix is 1.876378e-03, corresponding to the eigenvector (-0.5295236,-0.5395006,-0.5105605,-0.4097217), indicating that the variance of this time series is 1.876378e-03 in the negative direction.
+
+
+## References and GitHub Link to Code
+References:
+
+* Federal Reserve issues FOMC statement. Board of Governors of the Federal Reserve System. (n.d.). Retrieved February 13, 2022, from https://www.federalreserve.gov/newsevents/pressreleases/monetary20210127a.htm 
+
+* Team, T. I. (2022, February 8). Quantitative easing (QE). Investopedia. Retrieved February 13, 2022, from https://www.investopedia.com/terms/q/quantitative-easing.asp 
+
+GitHub Link : https://github.com/ElsaGrx/APM466-A1.git
+
+
+
+
+
+
+
+
